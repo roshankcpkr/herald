@@ -7,6 +7,7 @@ import {
   ScrollView,
   Pressable,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -17,6 +18,7 @@ import { openURL, PRIVACY_POLICY_URL, TERMS_URL } from "@/utils/linkHelper";
 import CountrySelection from "@/components/CountrySelection";
 import { saveCountry } from "@/utils/storage";
 import { Country } from "@/constants/CountryList";
+import * as FileSystem from "expo-file-system";
 
 const slides = [
   {
@@ -43,6 +45,9 @@ export default function Onboarding() {
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const router = useRouter();
+  const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [modelDownloaded, setModelDownloaded] = useState(false);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -75,12 +80,70 @@ export default function Onboarding() {
     }
   };
 
+  const downloadModel = async () => {
+    try {
+      setIsDownloadingModel(true);
+      const modelName = "model.gguf";
+      const modelPath = `${FileSystem.documentDirectory}${modelName}`;
+
+      const modelExists = await FileSystem.getInfoAsync(modelPath);
+      if (modelExists.exists) {
+        setModelDownloaded(true);
+        setIsDownloadingModel(false);
+        return;
+      }
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true",
+        modelPath,
+        {},
+        (downloadProgress) => {
+          const progress =
+            downloadProgress.totalBytesWritten /
+            downloadProgress.totalBytesExpectedToWrite;
+          setDownloadProgress(progress);
+        }
+      );
+
+      const result = await downloadResumable.downloadAsync();
+      if (result?.uri) {
+        setModelDownloaded(true);
+        await AsyncStorage.setItem("modelDownloaded", "true");
+      }
+    } catch (error) {
+      console.error("Error downloading model:", error);
+    } finally {
+      setIsDownloadingModel(false);
+    }
+  };
+
+  const handleGetStarted = async () => {
+    if (!modelDownloaded) {
+      await downloadModel();
+    }
+    if (modelDownloaded) {
+      setCurrentPhase("categories");
+    }
+  };
+
   if (currentPhase === "categories") {
     return <CategorySelection onComplete={handleComplete} />;
   }
 
   if (currentPhase === "country") {
     return <CountrySelection onComplete={handleCountrySelect} />;
+  }
+
+  if (isDownloadingModel) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.downloadText}>Downloading AI Model...</Text>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.progressText}>
+          {Math.round(downloadProgress * 100)}%
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -134,7 +197,7 @@ export default function Onboarding() {
 
       <Pressable
         style={styles.getStartedButton}
-        onPress={() => setCurrentPhase("categories")}
+        onPress={handleGetStarted}
         className="hover:cursor-pointer"
       >
         <Text style={styles.getStartedButtonText}>Get Started</Text>
@@ -215,5 +278,15 @@ const styles = StyleSheet.create({
   link: {
     color: "#007AFF",
     textDecorationLine: "underline",
+  },
+  downloadText: {
+    fontSize: 18,
+    marginBottom: 20,
+    color: "#333",
+  },
+  progressText: {
+    fontSize: 16,
+    marginTop: 10,
+    color: "#007AFF",
   },
 });

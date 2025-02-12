@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "herald.app"
-               BlueprintName = "herald"
-               ReferencedContainer = "container:herald.xcodeproj">
+               BuildableName = "Herald.app"
+               BlueprintName = "Herald"
+               ReferencedContainer = "container:Herald.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "heraldTests.xctest"
-               BlueprintName = "heraldTests"
-               ReferencedContainer = "container:herald.xcodeproj">
+               BuildableName = "HeraldTests.xctest"
+               BlueprintName = "HeraldTests"
+               ReferencedContainer = "container:Herald.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "herald.app"
-            BlueprintName = "herald"
-            ReferencedContainer = "container:herald.xcodeproj">
+            BuildableName = "Herald.app"
+            BlueprintName = "Herald"
+            ReferencedContainer = "container:Herald.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "herald.app"
-            BlueprintName = "herald"
-            ReferencedContainer = "container:herald.xcodeproj">
+            BuildableName = "Herald.app"
+            BlueprintName = "Herald"
+            ReferencedContainer = "container:Herald.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

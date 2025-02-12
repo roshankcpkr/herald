@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { processRssFeed } from "@/utils/fetchRawRssFeed";
 
 type SettingItem = {
   icon: keyof typeof FontAwesome.glyphMap;

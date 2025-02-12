@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "herald-ai",
-    "slug": "herald-ai",
+    "name": "Herald",
+    "slug": "Herald",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -26,6 +26,7 @@
     },
     "plugins": [
       "expo-router",
+
       [
         "expo-font",
         {
@@ -39,7 +40,8 @@
           ]
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
