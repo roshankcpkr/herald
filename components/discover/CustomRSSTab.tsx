@@ -14,6 +14,7 @@ import EmptyState from "@/components/settings/EmptyState";
 import { Article } from "@/utils/storage";
 import { FontAwesome } from "@expo/vector-icons";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { customRssFeeds } from "@/constants/DiscoverRss";
 
 export default function CustomRSSTab() {
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export default function CustomRSSTab() {
 
   useEffect(() => {
     if (selectedFeeds.length > 0) {
-      loadArticles(1);
+      loadArticles(false);
     }
   }, [selectedFeeds]);
 
@@ -39,34 +40,22 @@ export default function CustomRSSTab() {
     const savedFeeds = await getRSSFeeds();
     setFeeds(savedFeeds);
     setSelectedFeeds(savedFeeds.map((feed) => feed.id));
-    await loadArticles(1);
+    await loadArticles(false);
   };
 
-  const loadArticles = async (pageNum = 1) => {
+  const loadArticles = async (refresh = false) => {
     try {
-      if (selectedFeeds.length === 0) {
-        setArticles([]);
-        setLoading(false);
-        return;
-      }
-
-      const selectedFeedUrls = feeds
-        .filter((feed) => selectedFeeds.includes(feed.id))
-        .map((feed) => feed.url);
-
       const { articles: newArticles, hasMore: more } = await fetchAndParseFeeds(
-        selectedFeedUrls
+        customRssFeeds.map((feed) => feed.url)
       );
 
-      if (pageNum === 1) {
-        setArticles(newArticles);
-      } else {
-        setArticles((prev) => [...prev, ...newArticles]);
-      }
+      const processedArticles = newArticles.map((article) => ({
+        ...article,
+        description: article.description,
+      }));
+
+      setArticles(processedArticles);
       setHasMore(more);
-      setPage(pageNum);
-    } catch (error) {
-      console.error("Error loading RSS feeds:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,12 +64,12 @@ export default function CustomRSSTab() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadArticles(1);
+    await loadArticles(true);
   };
 
   const handleLoadMore = async () => {
     if (!hasMore || loading) return;
-    await loadArticles(page + 1);
+    await loadArticles();
   };
 
   const toggleFeedSelection = (feedId: string) => {
@@ -172,6 +161,8 @@ export default function CustomRSSTab() {
         onRefresh={handleRefresh}
         onLoadMore={handleLoadMore}
         hasMore={hasMore}
+        onArticleInView={() => {}}
+        articlesLoading={{}}
       />
       {renderFilterModal()}
     </View>

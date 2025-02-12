@@ -6,11 +6,6 @@ export type RSSFeed = {
 
 export const rssFeeds: RSSFeed[] = [
   {
-    url: "https://feeds.twit.tv/aaa.xml",
-    name: "All About Android (Audio)",
-    category: "Android",
-  },
-  {
     url: "https://blog.google/products/android/rss",
     name: "Android",
     category: "Android",
@@ -349,11 +344,6 @@ export const rssFeeds: RSSFeed[] = [
   {
     url: "https://www.contemporist.com/feed/",
     name: "CONTEMPORIST",
-    category: "Architecture",
-  },
-  {
-    url: "https://inhabitat.com/architecture/feed/",
-    name: "Inhabitat - Architecture",
     category: "Architecture",
   },
   {

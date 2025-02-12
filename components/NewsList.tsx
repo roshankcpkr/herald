@@ -15,72 +15,72 @@ interface NewsListProps {
   articles: Article[];
   loading: boolean;
   refreshing: boolean;
-  onRefresh: () => Promise<void>;
-  onLoadMore: () => Promise<void>;
+  onRefresh: () => void;
+  onLoadMore: () => void;
+  onArticleInView: (index: number) => void;
   hasMore: boolean;
-  loadThreshold?: number;
+  articlesLoading: { [key: string]: boolean };
 }
 
-export default function NewsList({
+const NewsList: React.FC<NewsListProps> = ({
   articles,
   loading,
   refreshing,
   onRefresh,
   onLoadMore,
+  onArticleInView,
   hasMore,
-  loadThreshold = 3,
-}: NewsListProps) {
-  const renderItem = ({ item }: { item: Article }) => <NewsCard {...item} />;
-
+  articlesLoading,
+}) => {
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (!viewableItems.length) return;
-
-      const lastVisibleIndex =
-        viewableItems[viewableItems.length - 1].index ?? -1;
-      if (lastVisibleIndex === -1) return;
-
-      if (lastVisibleIndex >= articles.length - loadThreshold) {
-        onLoadMore();
+      if (viewableItems.length > 0) {
+        const lastViewableIndex = viewableItems[viewableItems.length - 1].index;
+        if (
+          lastViewableIndex !== null &&
+          lastViewableIndex >= articles.length - 2 &&
+          hasMore
+        ) {
+          onLoadMore();
+        }
       }
     },
-    [articles.length, loadThreshold, onLoadMore]
+    [articles.length, onLoadMore, hasMore]
   );
 
-  const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
-    minimumViewTime: 300,
-  };
+  if (loading && articles.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <FlatList
       data={articles}
-      renderItem={renderItem}
+      renderItem={({ item }) => <NewsCard {...item} />}
       keyExtractor={(item) => item.id}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      ListFooterComponent={
-        loading && !refreshing ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-          </View>
-        ) : null
-      }
-      pagingEnabled
-      snapToAlignment="start"
-      decelerationRate="fast"
-      snapToInterval={Dimensions.get("window").height - 150}
-      viewabilityConfig={viewabilityConfig}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      onEndReached={hasMore ? onLoadMore : undefined}
+      onEndReachedThreshold={0.5}
       onViewableItemsChanged={handleViewableItemsChanged}
-      showsVerticalScrollIndicator={false}
+      viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+      contentContainerStyle={styles.list}
     />
   );
-}
+};
 
 const styles = StyleSheet.create({
-  loaderContainer: {
-    padding: 20,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
   },
+  list: {
+    paddingBottom: 20,
+  },
 });
+
+export default NewsList;

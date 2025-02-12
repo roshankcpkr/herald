@@ -5,11 +5,12 @@ export interface Article {
   id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrl: string | null;
   sourceUrl: string;
   source: string;
   publishedAt: string;
   category: string;
+  summary?: string;
 }
 
 export interface RSSFeed {

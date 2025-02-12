@@ -1,3 +1,5 @@
+import { RSSFeed } from "@/utils/storage";
+
 export type DISCOVER_RSS = {
   url: string;
   name: string;
@@ -45,4 +47,14 @@ export const interestingRssFeeds: DISCOVER_RSS[] = [
     name: "All About Android (Audio)",
     category: "Android",
   },
+];
+
+export const customRssFeeds: RSSFeed[] = [
+  {
+    id: "android-blog",
+    url: "https://blog.google/products/android/rss",
+    name: "Android Blog",
+    category: "Technology",
+  },
+  // Add more feeds as needed
 ];
