@@ -76,6 +76,11 @@ export default function FavoritesScreen() {
     setSelectedArticles([]);
   };
 
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedArticles([]);
+  };
+
   const renderItem = ({ item }: { item: Article }) => (
     <Pressable
       style={[
@@ -134,6 +139,12 @@ export default function FavoritesScreen() {
             <Text style={styles.toolbarText}>
               Remove ({selectedArticles.length})
             </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.toolbarButton, styles.cancelButton]}
+            onPress={exitSelectionMode}
+          >
+            <Text style={styles.toolbarText}>Cancel</Text>
           </Pressable>
         </Animated.View>
       )}
@@ -211,5 +222,8 @@ const styles = StyleSheet.create({
   toolbarText: {
     color: "#fff",
     fontFamily: "Rubik-Medium",
+  },
+  cancelButton: {
+    backgroundColor: "#8e8e93",
   },
 });

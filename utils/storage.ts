@@ -1,16 +1,19 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Country } from "@/constants/CountryList";
+import { RssFeed } from "@/app/settings/rss-manager";
 
 export interface Article {
   id: string;
   title: string;
   description: string;
+  fullContent?: string;
   imageUrl: string | null;
   sourceUrl: string;
   source: string;
   publishedAt: string;
   category: string;
   summary?: string;
+  isRead?: boolean;
 }
 
 export interface RSSFeed {
@@ -22,7 +25,7 @@ export interface RSSFeed {
 
 const BOOKMARKS_KEY = "@herald_bookmarks";
 const CATEGORIES_KEY = "@herald_categories";
-const RSS_FEEDS_KEY = "@herald_rss_feeds";
+const RSS_FEEDS_KEY = "rss_feeds";
 const COUNTRY_KEY = "@herald_country";
 
 export const saveArticle = async (article: Article) => {
@@ -97,40 +100,52 @@ export const isArticleSaved = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getRSSFeeds = async (): Promise<RSSFeed[]> => {
+export const getRSSFeeds = async (): Promise<RssFeed[]> => {
   try {
-    const feeds = await AsyncStorage.getItem(RSS_FEEDS_KEY);
-    return feeds ? JSON.parse(feeds) : [];
+    const feedsJson = await AsyncStorage.getItem(RSS_FEEDS_KEY);
+    return feedsJson ? JSON.parse(feedsJson) : [];
   } catch (error) {
     console.error("Error getting RSS feeds:", error);
     return [];
   }
 };
 
-export const saveRSSFeed = async (feed: RSSFeed) => {
+export const saveRSSFeed = async (feed: RssFeed): Promise<void> => {
   try {
     const feeds = await getRSSFeeds();
-    const index = feeds.findIndex((f) => f.id === feed.id);
+    const existingIndex = feeds.findIndex((f) => f.id === feed.id);
 
-    if (index !== -1) {
-      feeds[index] = feed;
+    if (existingIndex >= 0) {
+      // Update existing feed
+      feeds[existingIndex] = feed;
     } else {
+      // Add new feed
       feeds.push(feed);
     }
 
     await AsyncStorage.setItem(RSS_FEEDS_KEY, JSON.stringify(feeds));
   } catch (error) {
     console.error("Error saving RSS feed:", error);
+    throw error;
   }
 };
 
-export const deleteRSSFeed = async (id: string) => {
+export const deleteRSSFeed = async (id: string): Promise<void> => {
   try {
     const feeds = await getRSSFeeds();
     const updatedFeeds = feeds.filter((feed) => feed.id !== id);
     await AsyncStorage.setItem(RSS_FEEDS_KEY, JSON.stringify(updatedFeeds));
   } catch (error) {
     console.error("Error deleting RSS feed:", error);
+    throw error;
+  }
+};
+
+export const clearRSSFeeds = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(RSS_FEEDS_KEY);
+  } catch (error) {
+    console.error("Error clearing RSS feeds:", error);
   }
 };
 

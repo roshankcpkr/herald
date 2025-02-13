@@ -1,13 +1,11 @@
 import * as rssParser from "react-native-rss-parser";
-import { rssFeeds } from "@/constants/rssFeeds";
 import { Article } from "@/utils/storage";
-
-let cachedArticles: Article[] = [];
-let isLoading = false;
+import { rssFeeds } from "@/constants/rssFeeds";
+import { cleanHtmlContent } from "./cleanContent";
 
 export const fetchAndParseFeeds = async (urls: string[]) => {
   try {
-    console.log("Fetching URLs:", urls);
+    console.log("🔄 Fetching URLs:", urls);
 
     const responses = await Promise.all(
       urls.map(async (url) => {
@@ -15,10 +13,9 @@ export const fetchAndParseFeeds = async (urls: string[]) => {
           const response = await fetch(url);
           const text = await response.text();
           const feed = await rssParser.parse(text);
-          // Add feed URL to track source
           return { feed, sourceUrl: url };
         } catch (error) {
-          console.error(`Error fetching ${url}:`, error);
+          console.error(`❌ Error fetching ${url}:`, error);
           return null;
         }
       })
@@ -26,27 +23,38 @@ export const fetchAndParseFeeds = async (urls: string[]) => {
 
     const validResponses = responses.filter(Boolean);
 
-    const articles = validResponses.flatMap((response) => {
+    const articles: Article[] = validResponses.flatMap((response) => {
       const feed = response?.feed;
       const sourceUrl = response?.sourceUrl;
       const feedSource =
-        rssFeeds.find((f) => f.url === sourceUrl)?.name || "Unknown source";
+        rssFeeds.find((f) => f.url === sourceUrl)?.name || "Unknown";
 
       return (
-        feed?.items?.map((item) => ({
-          id: item.id || item.guid || item.link || Math.random().toString(),
-          title: item.title?.trim() || "No title",
-          description: formatDescription(item.description),
-          imageUrl: extractImageUrl(item),
-          sourceUrl: item.link?.trim() || sourceUrl || "#",
-          source: feedSource,
-          publishedAt: formatDate(item.published),
-          category: "news",
-        })) || []
+        feed?.items?.map((item: any) => {
+          const rawContent =
+            (item as any)["content:encoded"] ||
+            (item as any).content ||
+            (item as any).description ||
+            "";
+
+          const cleanedContent = cleanHtmlContent(rawContent);
+          const cleanedDescription = cleanHtmlContent(item.description || "");
+
+          return {
+            id: item.id || item.guid || item.link || Date.now().toString(),
+            title: item.title?.trim() || "No title",
+            description: cleanedDescription,
+            fullContent: cleanedContent,
+            imageUrl: extractImageUrl(item),
+            sourceUrl: item.link?.trim() || sourceUrl || "#",
+            source: feedSource,
+            publishedAt: formatDate(item.published || item.pubDate),
+            category: feedSource,
+          };
+        }) || []
       );
     });
 
-    // Remove duplicates and invalid articles
     const uniqueArticles = articles.filter(
       (article, index, self) =>
         article.title &&
@@ -59,69 +67,70 @@ export const fetchAndParseFeeds = async (urls: string[]) => {
       hasMore: uniqueArticles.length > 0,
     };
   } catch (error) {
-    console.error("Error in fetchAndParseFeeds:", error);
+    console.error("❌ Error in fetchAndParseFeeds:", error);
     return { articles: [], hasMore: false };
   }
 };
 
-function formatDescription(desc: string | undefined): string {
-  if (!desc) return "No description available";
+function extractImageUrl(item: any): string {
+  const possibleImages = [
+    item.description
+      ?.match(/<img[^>]+src="([^">]+)"/)?.[1]
+      ?.replace(/&amp;/g, "&"),
+    (item as any)["media:content"]?.[0]?.url,
+    (item as any)["media:thumbnail"]?.[0]?.url,
+    item.enclosures?.[0]?.url,
+    item.image?.url,
+    (item as any)["itunes:image"]?.href,
+    "https://placehold.co/600x400?text=No+Image",
+  ];
 
-  // Remove HTML tags and normalize spaces
-  const text = desc
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const imageUrl = possibleImages.find((url) => url && isValidUrl(url));
 
-  // Split into words and limit to 40 words
-  const words = text.split(" ");
-  if (words.length > 40) {
-    return words.slice(0, 40).join(" ") + "...";
+  if (imageUrl?.includes("fbcdn.net") || imageUrl?.includes("facebook.com")) {
+    return cleanFacebookUrl(imageUrl);
   }
 
-  return text;
+  return imageUrl || possibleImages[possibleImages.length - 1];
+}
+
+function cleanFacebookUrl(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    const essentialParams = [
+      "stp",
+      "_nc_cat",
+      "ccb",
+      "_nc_sid",
+      "_nc_ohc",
+      "_nc_ht",
+      "oh",
+      "oe",
+    ];
+    const params = essentialParams
+      .map((param) => `${param}=${parsedUrl.searchParams.get(param)}`)
+      .filter((param) => !param.endsWith("null"))
+      .join("&");
+    return `${parsedUrl.origin}${parsedUrl.pathname}?${params}`;
+  } catch {
+    return url;
+  }
 }
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return new Date().toISOString();
-
   try {
-    const date = new Date(dateStr);
-    return date.toISOString();
+    return new Date(dateStr).toISOString();
   } catch {
     return new Date().toISOString();
   }
 }
 
-function extractImageUrl(item: any): string {
-  // Try different possible image locations
-  const mediaContent = item.mediaContent?.[0]?.url;
-  const enclosure = item.enclosures?.[0]?.url;
-  const imgMatch = item.description?.match(/<img[^>]+src="([^">]+)"/);
-  const thumbnail = item.itunes?.image;
-  const defaultImage = "https://placehold.co/600x400?text=No+Image";
-
-  // Validate URL
-  const url =
-    mediaContent ||
-    enclosure ||
-    (imgMatch && imgMatch[1]) ||
-    thumbnail ||
-    defaultImage;
-
+function isValidUrl(url: string): boolean {
   try {
-    new URL(url); // Check if valid URL
-    return url;
+    new URL(url);
+    return true;
   } catch {
-    return defaultImage;
-  }
-}
-
-function extractDomain(url?: string): string {
-  if (!url) return "";
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
+    return false;
   }
 }

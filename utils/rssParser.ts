@@ -1,15 +1,137 @@
 import * as rssParser from "react-native-rss-parser";
+import { getSummary } from "./summary";
+import { Article } from "@/utils/storage";
 
 interface ParsedArticle {
   id: string;
   title: string;
   description: string;
+  fullContent: string;
+  imageUrl: string | null;
   sourceUrl: string;
+  source: string;
+  publishedAt: string;
+  category: string;
+}
+
+interface ProcessedFeed {
+  title: string;
+  description: string;
+  fullContent: string;
+  summary: string;
+  link: string;
   publishedAt: string;
   imageUrl: string | null;
   source: string;
-  category: string;
 }
+
+interface RSSItem {
+  id?: string;
+  guid?: string;
+  title?: string;
+  link?: string;
+  description?: string;
+  content?: string;
+  "content:encoded"?: string;
+  pubDate?: string;
+  published?: string;
+  date?: string;
+  "dc:date"?: string;
+  updated?: string;
+  created?: string;
+  "media:content"?: { url: string }[];
+  "media:thumbnail"?: { url: string }[];
+  enclosures?: { url: string }[];
+  image?: { url: string };
+  "itunes:image"?: { href: string };
+}
+
+const extractContent = (item: RSSItem): string => {
+  const possibleContent = [
+    item["content:encoded"],
+    item.content,
+    item.description,
+    "",
+  ];
+  return possibleContent.find((content) => !!content) || "";
+};
+
+const extractDate = (item: RSSItem): string => {
+  const possibleDates = [
+    item.published,
+    item.pubDate,
+    item.date,
+    item["dc:date"],
+    item.updated,
+    item.created,
+  ];
+
+  try {
+    const date = possibleDates.find((date) => !!date);
+    return date ? new Date(date).toISOString() : new Date().toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+};
+
+const extractImage = (item: RSSItem): string | null => {
+  const descriptionImage = item.description
+    ?.match(/<img[^>]+src="([^">]+)"/)?.[1]
+    ?.replace(/&amp;/g, "&");
+
+  const possibleImages = [
+    descriptionImage,
+    item["media:content"]?.[0]?.url,
+    item["media:thumbnail"]?.[0]?.url,
+    item.enclosures?.[0]?.url,
+    item.image?.url,
+    item["itunes:image"]?.href,
+  ];
+
+  const imageUrl = possibleImages.find((url) => url && isValidUrl(url));
+
+  if (imageUrl?.includes("fbcdn.net") || imageUrl?.includes("facebook.com")) {
+    return cleanFacebookUrl(imageUrl);
+  }
+
+  return imageUrl || null;
+};
+
+const cleanFacebookUrl = (url: string): string => {
+  try {
+    const parsedUrl = new URL(url);
+    const essentialParams = [
+      "stp",
+      "_nc_cat",
+      "ccb",
+      "_nc_sid",
+      "_nc_ohc",
+      "_nc_ht",
+      "oh",
+      "oe",
+    ];
+
+    const params = essentialParams
+      .map((param) => `${param}=${parsedUrl.searchParams.get(param)}`)
+      .filter((param) => !param.endsWith("null"))
+      .join("&");
+
+    return `${parsedUrl.origin}${parsedUrl.pathname}?${params}`;
+  } catch {
+    return url;
+  }
+};
+
+const cleanText = (text: string): string => {
+  return text
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 export const parseRssFeed = async (
   url: string,
@@ -20,113 +142,26 @@ export const parseRssFeed = async (
     const text = await response.text();
     const feed = await rssParser.parse(text);
 
-    return feed.items.map((item) => {
-      // Generate unique ID
-      const id = `${
-        item.id || item.guid || item.link || Date.now()
-      }-${Math.random().toString(36).substr(2, 9)}`;
-
-      // Extract title from various possible locations
-      const title =
-        (item as any).title ||
-        (item as any)["dc:title"] ||
-        (item as any)["media:title"] ||
-        (item as any)["itunes:title"] ||
-        (item as any).headline ||
-        (item as any).name;
-      ("");
-
-      // Extract description from various possible locations
-      const description = cleanText(
-        item.description ||
-          (item as any).content ||
-          (item as any).contentSnippet ||
-          (item as any)["content:encoded"] ||
-          (item as any)["dc:description"] ||
-          (item as any).summary ||
-          (item as any)["media:description"] ||
-          ""
-      );
-
-      // Extract link/URL from various possible locations
-      const sourceUrl =
-        item.links?.[0]?.url || item.link || item.url || item.guid || "";
-
-      // Extract publish date from various possible locations
-      const publishedAt = parseDate(
-        item.published ||
-          item.pubDate ||
-          item.date ||
-          item["dc:date"] ||
-          item.updated ||
-          item.created ||
-          new Date().toISOString()
-      );
-
-      // Extract image from various possible locations
-      const imageUrl = extractImage(item);
-
-      return {
-        id,
-        title,
-        description,
-        sourceUrl,
-        publishedAt,
-        imageUrl,
-        source: feedSource,
-        category: extractCategory(item, feedSource),
-      };
-    });
+    return feed.items.map((item: RSSItem) => ({
+      id: `${item.id || item.guid || item.link || Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
+      title: cleanText(item.title || ""),
+      description: cleanText(extractContent(item)),
+      fullContent: extractContent(item),
+      sourceUrl: item.link || "",
+      publishedAt: extractDate(item),
+      imageUrl: extractImage(item),
+      source: feedSource,
+      category: feedSource,
+    }));
   } catch (error) {
     console.error(`Error parsing RSS feed from ${url}:`, error);
     return [];
   }
 };
 
-const cleanText = (text: string): string => {
-  return text
-    .replace(/<\/?[^>]+(>|$)/g, "") // Remove HTML tags
-    .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
-    .replace(/&amp;/g, "&") // Replace &amp; with &
-    .replace(/&quot;/g, '"') // Replace &quot; with "
-    .replace(/&#39;/g, "'") // Replace &#39; with '
-    .replace(/\s+/g, " ") // Replace multiple spaces with single space
-    .trim();
-};
-
-const parseDate = (dateString: string): string => {
-  try {
-    const date = new Date(dateString);
-    return date.toISOString();
-  } catch {
-    return new Date().toISOString();
-  }
-};
-
-const extractImage = (item: any): string | null => {
-  // Try all possible image locations
-  const possibleImages = [
-    item.enclosures?.[0]?.url,
-    item.mediaContent?.[0]?.url,
-    item["media:content"]?.[0]?.url,
-    item["media:thumbnail"]?.[0]?.url,
-    item.image?.url,
-    item.image,
-    item.thumbnail,
-    item["itunes:image"]?.href,
-    item.imageUrl,
-    // Extract from content if contains img tag
-    (item.content || item.description || "").match(
-      /<img[^>]+src="([^">]+)"/
-    )?.[1],
-  ];
-
-  // Return first valid image URL
-  return possibleImages.find((url) => url && isValidUrl(url)) || null;
-};
-
 const extractCategory = (item: any, defaultCategory: string): string => {
-  // Try all possible category locations
   const categories = [
     item.categories?.[0],
     item.category,
@@ -150,7 +185,7 @@ const isValidUrl = (url: string): boolean => {
 export const fetchAndParseFeeds = async (
   urls: string[],
   batchSize: number = 5
-): Promise<{ articles: ParsedArticle[]; hasMore: boolean }> => {
+): Promise<{ articles: Article[]; hasMore: boolean }> => {
   try {
     const feedPromises = urls.slice(0, batchSize).map((url) => {
       const source = extractSourceFromUrl(url);
@@ -164,9 +199,16 @@ export const fetchAndParseFeeds = async (
           result.status === "fulfilled"
       )
       .flatMap((result) => result.value)
-      .filter(
-        (article) => article.title && article.description && article.sourceUrl
-      );
+      .map((article) => ({
+        ...article,
+        source: extractSourceFromUrl(article.sourceUrl),
+        imageUrl: extractImage(article),
+        fullContent:
+          (article as any)["content:encoded"] ||
+          (article as any).content ||
+          article.description ||
+          "",
+      }));
 
     return {
       articles,
@@ -191,5 +233,55 @@ const extractSourceFromUrl = (url: string): string => {
       .join(" ");
   } catch {
     return url;
+  }
+};
+
+const fetchRssFeed = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    return await response.text();
+  } catch (error) {
+    console.error("Error fetching RSS feed:", error);
+    return null;
+  }
+};
+
+export const processRssFeed = async (
+  url: string
+): Promise<ProcessedFeed | null> => {
+  try {
+    const text = await fetchRssFeed(url);
+    if (!text) return null;
+
+    const feed = await rssParser.parse(text);
+    if (!feed.items?.[0]) return null;
+
+    const item = feed.items[0];
+
+    const fullContent =
+      (item as any)["content:encoded"] ||
+      (item as any).content ||
+      (item as any).description ||
+      "";
+
+    const summary = await getSummary(fullContent);
+
+    return {
+      title: item.title || "",
+      description: item.description || "",
+      fullContent:
+        (item as any)["content:encoded"] ||
+        (item as any).content ||
+        (item as any).description ||
+        "",
+      summary: summary || "",
+      link: (item as any).link || "",
+      publishedAt: item.published || new Date().toISOString(),
+      imageUrl: extractImage(item),
+      source: extractSourceFromUrl(url) || "",
+    };
+  } catch (error) {
+    console.error("Error processing RSS feed:", error);
+    return null;
   }
 };

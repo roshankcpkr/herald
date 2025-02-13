@@ -2,7 +2,9 @@
 
 # dependencies
 node_modules/
-
+ios/Herald.xcodeproj/
+ios/Herald.xcworkspace/
+ios/Herald/
 # Expo
 .expo/
 dist/

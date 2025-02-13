@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   Image,
   StyleSheet,
   Dimensions,
-  Platform,
   Pressable,
   Linking,
-  Share,
   Modal,
   TouchableOpacity,
 } from "react-native";
@@ -19,37 +17,25 @@ import {
   removeArticle,
   isArticleSaved,
 } from "@/utils/storage";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { formatDistanceToNow } from "date-fns";
 import TextToSpeech from "./news/TextToSpeech";
 import { Colors } from "@/constants/Colors";
 
 const { width, height } = Dimensions.get("window");
-const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 90 : 70;
-const SCREEN_HEIGHT = height - TAB_BAR_HEIGHT;
-const SCREEN_WIDTH = width;
-const SUMMARY_MAX_LINES = 3;
 
 interface NewsCardProps extends Article {
   onFinish?: () => void;
-  fetchNews?: (
-    page: number
-  ) => Promise<{ articles: Article[]; hasMore: boolean }>;
   animated?: boolean;
   isRead?: boolean;
 }
 
 export default function NewsCard({
   onFinish,
-  fetchNews,
   animated,
   ...props
 }: NewsCardProps) {
   const [isSaved, setIsSaved] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [textHeight, setTextHeight] = useState(0);
-  const [maxHeight, setMaxHeight] = useState(0);
 
   useEffect(() => {
     checkSavedStatus();
@@ -58,8 +44,7 @@ export default function NewsCard({
   useEffect(() => {
     const timer = setTimeout(() => {
       onFinish?.();
-    }, 30000); // Mark as read after 30 seconds
-
+    }, 30000);
     return () => clearTimeout(timer);
   }, [props.id]);
 
@@ -96,57 +81,33 @@ export default function NewsCard({
     );
   };
 
-  const onTextLayout = useCallback(
-    (e: { nativeEvent: { lines: any[] } }) => {
-      if (!isExpanded) {
-        setTextHeight(
-          e.nativeEvent.lines
-            .slice(0, SUMMARY_MAX_LINES)
-            .reduce((total, line) => total + line.height, 0)
-        );
-        setMaxHeight(
-          e.nativeEvent.lines.reduce((total, line) => total + line.height, 0)
-        );
-      }
-    },
-    [isExpanded]
-  );
-
-  const shouldShowReadMore = maxHeight > textHeight;
-
-  console.log("🎯 Rendering article:", {
-    id: props.id,
-    hasTitle: !!props.title,
-    hasDescription: !!props.description,
-    hasSummary: !!(
-      props.description?.includes("Summary") || props.description?.length < 100
-    ),
-    descriptionLength: props.description?.length,
-  });
+  const renderContent = () => {
+    if (props.summary) {
+      return <Text style={styles.summary}>{props.summary}</Text>;
+    }
+    return <Text style={styles.summary}>{props.description}</Text>;
+  };
 
   return (
     <View style={styles.cardContainer}>
       <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.source}>{props.source}</Text>
+          <View style={styles.sourceContainer}>
+            <Text style={styles.source}>{props.source}</Text>
+            <Text style={styles.dot}>•</Text>
+            <Text style={styles.date}>
+              {formatDistanceToNow(new Date(props.publishedAt), {
+                addSuffix: true,
+              })}
+            </Text>
+          </View>
           <View style={styles.headerRight}>
             <Text style={styles.category}>{props.category}</Text>
-            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-              <FontAwesome
-                name={isSaved ? "bookmark" : "bookmark-o"}
-                size={20}
-                color="#007AFF"
-              />
-            </TouchableOpacity>
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleOpenLink}>
-          <Text style={styles.title}>{props.title}</Text>
-        </TouchableOpacity>
-
-        {props.imageUrl && (
-          <>
+        <View style={styles.mainContent}>
+          {props.imageUrl && (
             <Pressable onPress={() => setImageModalVisible(true)}>
               <Image
                 source={{ uri: props.imageUrl }}
@@ -154,59 +115,59 @@ export default function NewsCard({
                 resizeMode="cover"
               />
             </Pressable>
-
-            <Modal
-              animationType="fade"
-              transparent={true}
-              visible={imageModalVisible}
-              onRequestClose={() => setImageModalVisible(false)}
-            >
-              <Pressable
-                style={styles.modalView}
-                onPress={() => setImageModalVisible(false)}
-              >
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setImageModalVisible(false)}
-                >
-                  <MaterialIcons name="close" size={24} color="white" />
-                </TouchableOpacity>
-                <Image
-                  source={{ uri: props.imageUrl }}
-                  style={styles.fullImage}
-                  resizeMode="contain"
-                />
-              </Pressable>
-            </Modal>
-          </>
-        )}
-
-        <View style={styles.contentContainer}>
-          <Text
-            style={[styles.summary, !isExpanded && { height: textHeight }]}
-            numberOfLines={isExpanded ? undefined : SUMMARY_MAX_LINES}
-            onTextLayout={onTextLayout}
-          >
-            {props.description?.trim() || "No summary available"}
-          </Text>
-
-          {maxHeight > textHeight && (
-            <TouchableOpacity
-              onPress={() => setIsExpanded(!isExpanded)}
-              style={styles.readMoreButton}
-            >
-              <Text style={styles.readMoreText}>
-                {isExpanded ? "Show less" : "Read more"}
-              </Text>
-            </TouchableOpacity>
           )}
+
+          <TouchableOpacity onPress={handleOpenLink}>
+            <Text style={styles.title}>{props.title}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.contentContainer}>{renderContent()}</View>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.date}>
-            {new Date(props.publishedAt).toLocaleDateString()}
-          </Text>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
+              <FontAwesome
+                name={isSaved ? "bookmark" : "bookmark-o"}
+                size={20}
+                color="#007AFF"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleOpenLink}
+              style={styles.actionButton}
+            >
+              <FontAwesome name="external-link" size={20} color="#007AFF" />
+            </TouchableOpacity>
+
+            <TextToSpeech text={props.summary || props.description} />
+          </View>
         </View>
+
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={imageModalVisible}
+          onRequestClose={() => setImageModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modalView}
+            onPress={() => setImageModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setImageModalVisible(false)}
+            >
+              <MaterialIcons name="close" size={24} color="white" />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: props.imageUrl }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          </Pressable>
+        </Modal>
       </View>
     </View>
   );
@@ -224,8 +185,8 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   card: {
     borderRadius: 16,
@@ -237,13 +198,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+  },
+  sourceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   source: {
     fontSize: 14,
     color: "#666",
-    fontWeight: "600",
+    fontFamily: "Rubik-Medium",
+  },
+  dot: {
+    fontSize: 14,
+    color: "#666",
+  },
+  date: {
+    fontSize: 14,
+    color: "#666",
+    fontFamily: "Rubik-Regular",
+  },
+  mainContent: {
+    padding: 12,
   },
   category: {
     fontSize: 12,
@@ -252,44 +228,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    fontFamily: "Rubik-Medium",
   },
   title: {
     fontSize: 18,
-    fontWeight: "bold",
     color: "#333",
-    padding: 12,
+    marginVertical: 12,
     lineHeight: 24,
+    fontFamily: "Rubik-SemiBold",
   },
   image: {
     width: "100%",
     height: 200,
     backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    marginBottom: 12,
   },
   contentContainer: {
-    padding: 12,
+    marginTop: 8,
   },
   summary: {
     fontSize: 16,
     lineHeight: 24,
     color: "#444",
-  },
-  readMoreButton: {
-    marginTop: 8,
-  },
-  readMoreText: {
-    color: "#007AFF",
-    fontWeight: "500",
+    fontFamily: "Rubik-Regular",
   },
   footer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
     padding: 12,
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
   },
-  date: {
-    fontSize: 12,
-    color: "#888",
+  actionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  actionButton: {
+    padding: 8,
   },
   modalView: {
     flex: 1,
@@ -315,8 +290,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  saveButton: {
-    padding: 8,
   },
 });

@@ -65,9 +65,7 @@ export default function Onboarding() {
     try {
       await saveCategories(selectedCategories);
       setCurrentPhase("country");
-    } catch (error) {
-      console.error("Error saving onboarding state:", error);
-    }
+    } catch (error) {}
   };
 
   const handleCountrySelect = async (country: Country) => {
@@ -75,9 +73,7 @@ export default function Onboarding() {
       await saveCountry(country);
       await AsyncStorage.setItem("hasCompletedOnboarding", "true");
       router.replace("/(tabs)");
-    } catch (error) {
-      console.error("Error completing onboarding:", error);
-    }
+    } catch (error) {}
   };
 
   const downloadModel = async () => {
@@ -94,7 +90,7 @@ export default function Onboarding() {
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true",
+        "https://huggingface.co/QuantFactory/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct.Q4_K_M.gguf?download=true",
         modelPath,
         {},
         (downloadProgress) => {
@@ -111,7 +107,6 @@ export default function Onboarding() {
         await AsyncStorage.setItem("modelDownloaded", "true");
       }
     } catch (error) {
-      console.error("Error downloading model:", error);
     } finally {
       setIsDownloadingModel(false);
     }

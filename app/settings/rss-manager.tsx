@@ -34,8 +34,10 @@ export default function RssManagerScreen() {
 
   const loadFeeds = async () => {
     try {
+      setLoading(true);
       const savedFeeds = await getRSSFeeds();
-      setFeeds(savedFeeds || []);
+      console.log("📱 Loaded RSS feeds:", savedFeeds);
+      setFeeds(savedFeeds);
     } catch (error) {
       console.error("Error loading RSS feeds:", error);
     } finally {
@@ -45,8 +47,14 @@ export default function RssManagerScreen() {
 
   const handleAddFeed = async (feed: RssFeed) => {
     try {
-      await saveRSSFeed(feed);
-      setFeeds((prev) => [...prev, feed]);
+      // Generate unique ID if not present
+      const newFeed = {
+        ...feed,
+        id: feed.id || Date.now().toString(),
+      };
+
+      await saveRSSFeed(newFeed);
+      await loadFeeds(); // Reload all feeds to ensure consistency
       setModalVisible(false);
     } catch (error) {
       console.error("Error saving RSS feed:", error);
@@ -55,9 +63,8 @@ export default function RssManagerScreen() {
 
   const handleEditFeed = async (feed: RssFeed) => {
     try {
-      const updatedFeeds = feeds.map((f) => (f.id === feed.id ? feed : f));
       await saveRSSFeed(feed);
-      setFeeds(updatedFeeds);
+      await loadFeeds(); // Reload all feeds to ensure consistency
       setModalVisible(false);
       setEditingFeed(null);
     } catch (error) {
@@ -68,7 +75,7 @@ export default function RssManagerScreen() {
   const handleDeleteFeed = async (id: string) => {
     try {
       await deleteRSSFeed(id);
-      setFeeds((prev) => prev.filter((feed) => feed.id !== id));
+      await loadFeeds(); // Reload all feeds to ensure consistency
     } catch (error) {
       console.error("Error deleting RSS feed:", error);
     }

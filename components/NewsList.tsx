@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   FlatList,
   ActivityIndicator,
@@ -22,31 +22,34 @@ interface NewsListProps {
   articlesLoading: { [key: string]: boolean };
 }
 
-const NewsList: React.FC<NewsListProps> = ({
+export default function NewsList({
   articles,
   loading,
   refreshing,
   onRefresh,
   onLoadMore,
-  onArticleInView,
   hasMore,
   articlesLoading,
-}) => {
-  const handleViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0) {
-        const lastViewableIndex = viewableItems[viewableItems.length - 1].index;
-        if (
-          lastViewableIndex !== null &&
-          lastViewableIndex >= articles.length - 2 &&
-          hasMore
-        ) {
-          onLoadMore();
-        }
-      }
-    },
-    [articles.length, onLoadMore, hasMore]
-  );
+}: NewsListProps) {
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    await onLoadMore();
+    setLoadingMore(false);
+  };
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+
+    return (
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color="#007AFF" />
+      </View>
+    );
+  };
 
   if (loading && articles.length === 0) {
     return (
@@ -61,16 +64,16 @@ const NewsList: React.FC<NewsListProps> = ({
       data={articles}
       renderItem={({ item }) => <NewsCard {...item} />}
       keyExtractor={(item) => item.id}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      onEndReached={hasMore ? onLoadMore : undefined}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      onEndReached={handleLoadMore}
       onEndReachedThreshold={0.5}
-      onViewableItemsChanged={handleViewableItemsChanged}
-      viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+      ListFooterComponent={renderFooter}
       contentContainerStyle={styles.list}
     />
   );
-};
+}
 
 const styles = StyleSheet.create({
   loadingContainer: {
@@ -81,6 +84,8 @@ const styles = StyleSheet.create({
   list: {
     paddingBottom: 20,
   },
+  footer: {
+    padding: 16,
+    alignItems: "center",
+  },
 });
-
-export default NewsList;

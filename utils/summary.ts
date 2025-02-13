@@ -1,5 +1,7 @@
 import { llamaUtils } from "./aimodel";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Article } from "./storage";
+import { cleanHtmlContent } from "./cleanContent";
 
 let isProcessing = false;
 const queue: (() => Promise<void>)[] = [];
@@ -18,8 +20,9 @@ const processQueue = async () => {
   }
 };
 
-export const getSummary = async (text: string): Promise<string> => {
-  console.log("📥 Received text for summary, length:", text?.length);
+export const getSummary = async (content: string): Promise<string> => {
+  const cleanContent = cleanHtmlContent(content);
+  console.log("📥 Received text for summary, length:", cleanContent?.length);
 
   return new Promise((resolve) => {
     const task = async () => {
@@ -40,8 +43,8 @@ export const getSummary = async (text: string): Promise<string> => {
         await new Promise((r) => setTimeout(r, 500));
 
         const prompt = `
-          Summarize this news article in exactly 40 words or less. Provide the overall summary of the article in 40 words or less. Don't cross the 40 words limit. Summarize the article in a way that is easy to understand and engaging. Don't add any other text or comments. Just the summary:
-          ${text}
+          Summarize this news article in exactly 40 words or less. Provide the overall summary of the article in 40 words or less. Don't cross the 40 words limit. Summarize the article in a way that is easy to understand and engaging. Don't add any other text or comments. Just the summary without missing the important points:
+          ${cleanContent}
         `;
 
         console.log("🤖 Generating summary with Llama");

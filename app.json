@@ -26,7 +26,12 @@
     },
     "plugins": [
       "expo-router",
-
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ],
       [
         "expo-font",
         {
@@ -50,6 +55,14 @@
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "2c8d0a64-d6ab-4188-95a7-4d36ae0d909e"
+      }
     }
   }
 }

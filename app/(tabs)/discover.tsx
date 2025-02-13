@@ -13,6 +13,7 @@ export default function DiscoverScreen() {
         tabBarLabelStyle: {
           fontFamily: "Rubik-Medium",
           fontSize: 14,
+          marginTop: 60,
         },
         tabBarIndicatorStyle: {
           backgroundColor: "#007AFF",

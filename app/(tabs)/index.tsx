@@ -1,11 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  StyleSheet,
-  ActivityIndicator,
-  Text,
-  FlatList,
-} from "react-native";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { getCategories } from "@/utils/storage";
 import NewsList from "@/components/NewsList";
 import { fetchAndParseFeeds } from "@/utils/feedParser";
@@ -14,10 +8,8 @@ import { Article } from "@/utils/storage";
 import { getCategoryNameById } from "@/constants/Categories";
 import { getSummary } from "@/utils/summary";
 
-const ITEMS_PER_PAGE = 10;
 const INITIAL_LOAD = 5;
 const PRELOAD_THRESHOLD = 3;
-const NEXT_BATCH_SIZE = 5;
 
 export default function TabOneScreen() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -86,31 +78,28 @@ export default function TabOneScreen() {
           return { articles: [], hasMore: false };
         }
 
-        // Create a Map to track unique articles by URL
         const uniqueArticles = new Map();
 
         for (const article of response.articles) {
-          // Skip if we already have this article (checking by URL)
           if (uniqueArticles.has(article.sourceUrl)) continue;
 
           try {
             setArticlesLoading((prev) => ({ ...prev, [article.id]: true }));
-            const summary = await getSummary(article.description);
+            const summary = await getSummary(
+              article.fullContent || article.description
+            );
 
             const processedArticle = {
               ...article,
               summary,
+              fullContent: article.fullContent,
               id: `${article.id}-${Date.now()}`,
             };
 
-            // Store in Map to prevent duplicates
             uniqueArticles.set(article.sourceUrl, processedArticle);
-
             setArticlesLoading((prev) => ({ ...prev, [article.id]: false }));
 
-            // Update articles state with unique articles only
             setArticles((prev) => {
-              // Check if article already exists in current state
               const exists = prev.some(
                 (a) => a.sourceUrl === article.sourceUrl
               );
@@ -128,7 +117,7 @@ export default function TabOneScreen() {
         const hasMoreItems = startIdx + batchSize < categoryFeeds.length;
         setHasMore(hasMoreItems);
         setPage(pageNum);
-
+        console.log("articles", uniqueArticles);
         return {
           articles: Array.from(uniqueArticles.values()),
           hasMore: hasMoreItems,
@@ -151,18 +140,39 @@ export default function TabOneScreen() {
   }, [selectedCategories, loadArticles]);
 
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setPage(0);
     try {
+      console.log("🔄 Starting fresh refresh");
+      setRefreshing(true);
+
+      // 1. Clear states
       setArticles([]);
-      await loadArticles(0, true);
-      console.log("Articles:", articles);
+      setPage(1);
+      setHasMore(true);
+      setArticlesLoading({});
+
+      // 2. Get and randomize feeds
+      let feedsForCategory = rssFeeds.filter(
+        (feed) =>
+          selectedCategories.length === 0 ||
+          selectedCategories.includes(feed.category.toLowerCase())
+      );
+
+      // Randomize feed order
+      feedsForCategory = feedsForCategory.sort(() => Math.random() - 0.5);
+
+      // 3. Fetch fresh articles
+      const response = await fetchAndParseFeeds(
+        feedsForCategory.map((feed) => feed.url)
+      );
+
+      setArticles(response.articles);
+      setHasMore(response.hasMore);
     } catch (error) {
-      console.error("Error refreshing:", error);
+      console.error("❌ Error during refresh:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [loadArticles]);
+  }, [selectedCategories]);
 
   // Add preloading logic
   const preloadNextBatch = useCallback(async () => {
@@ -198,7 +208,7 @@ export default function TabOneScreen() {
       </View>
     );
   }
-
+  console.log("news articles", articles);
   return (
     <View style={styles.container}>
       <NewsList
@@ -226,7 +236,7 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "gray",
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,

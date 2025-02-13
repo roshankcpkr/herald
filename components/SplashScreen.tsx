@@ -14,19 +14,16 @@ export default function SplashScreen({
   useEffect(() => {
     async function initialize() {
       try {
-        // Start fade in animation immediately
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 1000,
           useNativeDriver: true,
         }).start();
 
-        // Initialize model
         await llamaUtils.initialize();
 
-        // Only proceed with fade out after model is initialized
         Animated.sequence([
-          Animated.delay(1000), // Show splash screen for at least 1 second after model loads
+          Animated.delay(1000),
           Animated.timing(fadeAnim, {
             toValue: 0,
             duration: 1000,
@@ -36,9 +33,7 @@ export default function SplashScreen({
           onComplete();
         });
       } catch (error) {
-        setInitError("Failed to initialize AI model");
         console.error("Model initialization failed:", error);
-        // Keep splash screen visible for error message
         setTimeout(() => {
           onComplete();
         }, 3000); // Show error for 3 seconds before completing

@@ -1,8 +1,16 @@
-import React from "react";
-import { Modal, View, StyleSheet, Pressable, Dimensions } from "react-native";
+import React, { useState } from "react";
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+} from "react-native";
 import NewsCard from "./NewsCard";
 import { Article } from "@/utils/storage";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 
 type SavedNewsModalProps = {
   article: Article | null;
@@ -15,35 +23,95 @@ export default function SavedNewsModal({
   visible,
   onClose,
 }: SavedNewsModalProps) {
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  const handlePressOutside = () => {
+    if (isSelectionMode) {
+      setIsSelectionMode(false);
+    } else {
+      onClose();
+    }
+  };
+
   if (!article) return null;
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={visible}
-      onRequestClose={onClose}
+      onRequestClose={handlePressOutside}
     >
-      <View style={styles.modalContainer}>
-        <Pressable style={styles.closeButton} onPress={onClose}>
-          <FontAwesome name="close" size={24} color="#fff" />
+      <Pressable style={styles.overlay} onPress={handlePressOutside}>
+        <Pressable
+          style={styles.modalView}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <MaterialIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {isSelectionMode ? (
+            <View style={styles.selectionMenu}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => setIsSelectionMode(false)}
+              >
+                <MaterialIcons name="close" size={24} color="#666" />
+                <Text style={styles.menuText}>Cancel</Text>
+              </TouchableOpacity>
+              {/* Other menu items */}
+            </View>
+          ) : (
+            <View style={styles.content}>
+              <NewsCard {...article} />
+            </View>
+          )}
         </Pressable>
-        <NewsCard {...article} />
-      </View>
+      </Pressable>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.9)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalView: {
+    width: "90%",
+    maxHeight: "80%",
+    backgroundColor: "white",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   closeButton: {
-    position: "absolute",
-    top: 50,
-    right: 20,
-    zIndex: 1,
-    padding: 10,
+    padding: 8,
+  },
+  selectionMenu: {
+    padding: 16,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  menuText: {
+    marginLeft: 12,
+    fontSize: 16,
+  },
+  content: {
+    padding: 16,
   },
 });

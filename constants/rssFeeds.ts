@@ -11,17 +11,7 @@ export const rssFeeds: RSSFeed[] = [
     category: "Android",
   },
   {
-    url: "https://www.reddit.com/r/android/.rss",
-    name: "Android",
-    category: "Android",
-  },
-  {
     url: "https://www.androidauthority.com/feed",
-    name: "Android Authority",
-    category: "Android",
-  },
-  {
-    url: "https://www.youtube.com/feeds/videos.xml?user=AndroidAuthority",
     name: "Android Authority",
     category: "Android",
   },
@@ -658,11 +648,6 @@ export const rssFeeds: RSSFeed[] = [
   {
     url: "https://www.theguardian.com/sport/cricket/rss",
     name: "The Guardian - Cricket",
-    category: "Cricket",
-  },
-  {
-    url: "https://www.theroar.com.au/cricket/feed/",
-    name: "The Roar - Cricket",
     category: "Cricket",
   },
   {
@@ -2447,11 +2432,6 @@ export const rssFeeds: RSSFeed[] = [
     category: "travel",
   },
   {
-    url: "https://www.lonelyplanet.com/news/feed/atom/",
-    name: "Lonely Planet Travel News",
-    category: "travel",
-  },
-  {
     url: "https://rss.nytimes.com/services/xml/rss/nyt/Travel.xml",
     name: "NYT > Travel",
     category: "travel",
@@ -2477,16 +2457,6 @@ export const rssFeeds: RSSFeed[] = [
     category: "UI/UX",
   },
   {
-    url: "https://www.designernews.co/?format=rss",
-    name: "Designer News Feed",
-    category: "UI/UX",
-  },
-  {
-    url: "https://www.invisionapp.com/inside-design/feed",
-    name: "Inside Design",
-    category: "UI/UX",
-  },
-  {
     url: "https://feeds.feedburner.com/JustCreativeDesignBlog",
     name: "JUST™ Creative",
     category: "UI/UX",
@@ -2494,11 +2464,6 @@ export const rssFeeds: RSSFeed[] = [
   {
     url: "https://www.nngroup.com/feed/rss/",
     name: "NN/g latest articles and announcements",
-    category: "UI/UX",
-  },
-  {
-    url: "https://uxstudioteam.com/ux-blog/feed/",
-    name: "UX Blog – UX Studio",
     category: "UI/UX",
   },
   {
@@ -2517,11 +2482,6 @@ export const rssFeeds: RSSFeed[] = [
     category: "UI/UX",
   },
   {
-    url: "https://www.reddit.com/r/userexperience/.rss",
-    name: "User Experience",
-    category: "UI/UX",
-  },
-  {
     url: "https://alistapart.com/main/feed/",
     name: "A List Apart: The Full Feed",
     category: "Web Development",
@@ -2529,11 +2489,6 @@ export const rssFeeds: RSSFeed[] = [
   {
     url: "https://css-tricks.com/feed/",
     name: "CSS-Tricks",
-    category: "Web Development",
-  },
-  {
-    url: "https://www.codewall.co.uk/feed/",
-    name: "Code Wall",
     category: "Web Development",
   },
   {
@@ -2549,11 +2504,6 @@ export const rssFeeds: RSSFeed[] = [
   {
     url: "https://gosink.in/rss/",
     name: "Sink In - Tech and Travel",
-    category: "Web Development",
-  },
-  {
-    url: "https://developers.google.com/web/updates/rss.xml",
-    name: "Updates",
     category: "Web Development",
   },
 ];

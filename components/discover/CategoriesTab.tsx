@@ -33,26 +33,53 @@ export default function CategoriesTab() {
   const [categoryFeeds, setCategoryFeeds] = useState<typeof rssFeeds>([]);
 
   useEffect(() => {
-    loadCategories();
+    loadInitialArticles();
   }, []);
 
-  const loadCategories = async () => {
-    const savedCategories = await getCategories();
-    setCategories(savedCategories);
-    setSelectedCategories(savedCategories);
+  const loadInitialArticles = async () => {
+    try {
+      setLoading(true);
+      const savedCategories = await getCategories();
+      setCategories(savedCategories);
+      setSelectedCategories(savedCategories);
 
-    // Pre-filter feeds based on categories
-    const categoryNames = savedCategories
-      .map((id) => getCategoryNameById(id))
-      .filter(Boolean) as string[];
+      // Pre-filter feeds based on categories
+      const categoryNames = savedCategories
+        .map((id) => getCategoryNameById(id))
+        .filter(Boolean) as string[];
 
-    const feeds = rssFeeds.filter((feed) =>
-      categoryNames.includes(feed.category.toLowerCase())
-    );
-    setCategoryFeeds(feeds);
+      const feeds = rssFeeds.filter((feed) =>
+        categoryNames.includes(feed.category.toLowerCase())
+      );
+      setCategoryFeeds(feeds);
 
-    // Load initial articles
-    loadArticles(0, false, feeds);
+      if (feeds.length > 0) {
+        const { articles: newArticles, hasMore } = await fetchAndParseFeeds(
+          feeds.map((feed) => feed.url)
+        );
+
+        // Sort articles by date
+        const sortedArticles = newArticles.sort(
+          (a, b) =>
+            new Date(b.publishedAt).getTime() -
+            new Date(a.publishedAt).getTime()
+        );
+
+        setArticles(sortedArticles);
+        setHasMore(hasMore);
+      }
+    } catch (error) {
+      console.error("Error loading initial articles:", error);
+      setArticles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadInitialArticles();
+    setRefreshing(false);
   };
 
   const toggleCategorySelection = async (categoryId: string) => {
@@ -159,6 +186,14 @@ export default function CategoriesTab() {
     </Modal>
   );
 
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading news...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -177,17 +212,11 @@ export default function CategoriesTab() {
         articles={articles}
         loading={loading}
         refreshing={refreshing}
-        onRefresh={async () => {
-          setRefreshing(true);
-          setPage(0);
-          await loadArticles(0, true);
-        }}
-        onLoadMore={async () => {
-          if (!loading && hasMore) {
-            await loadArticles(page + 1);
-          }
-        }}
+        onRefresh={handleRefresh}
+        onLoadMore={() => {}}
         hasMore={hasMore}
+        onArticleInView={() => {}}
+        articlesLoading={{}}
       />
       {renderFilterModal()}
     </View>
@@ -270,6 +299,17 @@ const styles = StyleSheet.create({
   categoryDescription: {
     fontSize: 14,
     fontFamily: "Rubik-Regular",
+    color: "#666",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: "Rubik-Medium",
     color: "#666",
   },
 });

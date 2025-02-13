@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -6,23 +6,27 @@ import {
   Pressable,
   ScrollView,
   Modal,
+  Button,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
-import { getRSSFeeds, RSSFeed } from "@/utils/storage";
-import { fetchAndParseFeeds } from "@/utils/feedParser";
+import { getRSSFeeds } from "@/utils/storage";
+import { fetchAndParseFeeds } from "@/utils/rssParser";
 import NewsList from "@/components/NewsList";
 import EmptyState from "@/components/settings/EmptyState";
 import { Article } from "@/utils/storage";
 import { FontAwesome } from "@expo/vector-icons";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { customRssFeeds } from "@/constants/DiscoverRss";
+import { router, useFocusEffect } from "expo-router";
+import { RssFeed } from "@/app/settings/rss-manager";
 
 export default function CustomRSSTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const [feeds, setFeeds] = useState<RSSFeed[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -32,44 +36,69 @@ export default function CustomRSSTab() {
 
   useEffect(() => {
     if (selectedFeeds.length > 0) {
-      loadArticles(false);
+      loadArticles(feeds);
     }
-  }, [selectedFeeds]);
+  }, [selectedFeeds, feeds]);
+
+  // Refresh when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      console.log("📱 Tab focused, refreshing feeds...");
+      loadFeeds();
+    }, [])
+  );
 
   const loadFeeds = async () => {
-    const savedFeeds = await getRSSFeeds();
-    setFeeds(savedFeeds);
-    setSelectedFeeds(savedFeeds.map((feed) => feed.id));
-    await loadArticles(false);
-  };
-
-  const loadArticles = async (refresh = false) => {
     try {
-      const { articles: newArticles, hasMore: more } = await fetchAndParseFeeds(
-        customRssFeeds.map((feed) => feed.url)
-      );
+      setLoading(true);
+      const savedFeeds = await getRSSFeeds();
+      console.log("📱 Loaded RSS feeds:", savedFeeds);
+      setFeeds(savedFeeds);
+      setSelectedFeeds(savedFeeds.map((feed) => feed.id));
 
-      const processedArticles = newArticles.map((article) => ({
-        ...article,
-        description: article.description,
-      }));
-
-      setArticles(processedArticles);
-      setHasMore(more);
+      if (savedFeeds.length > 0) {
+        await loadArticles(savedFeeds);
+      } else {
+        setArticles([]);
+      }
+    } catch (error) {
+      console.error("Error loading feeds:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadArticles(true);
+  const loadArticles = async (currentFeeds: RssFeed[]) => {
+    try {
+      const feedUrls = currentFeeds.map((feed) => feed.url);
+      console.log("🔄 Fetching articles from URLs:", feedUrls);
+
+      const response = await fetchAndParseFeeds(feedUrls);
+      console.log("📚 Fetched articles count:", response.articles);
+
+      // Sort articles by date
+      const sortedArticles = response.articles.sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+
+      setArticles(sortedArticles);
+      setHasMore(response.hasMore);
+    } catch (error) {
+      console.error("Error loading articles:", error);
+    }
   };
 
+  const handleRefresh = useCallback(async () => {
+    console.log("🔄 Manual refresh triggered");
+    setRefreshing(true);
+    await loadFeeds();
+  }, []);
+
   const handleLoadMore = async () => {
-    if (!hasMore || loading) return;
-    await loadArticles();
+    // Implement pagination if needed
+    console.log("Loading more articles...");
   };
 
   const toggleFeedSelection = (feedId: string) => {
@@ -79,6 +108,10 @@ export default function CustomRSSTab() {
       }
       return [...prev, feedId];
     });
+  };
+
+  const handleGoToSettings = () => {
+    router.push("/settings/rss-manager");
   };
 
   const renderFilterModal = () => (
@@ -124,19 +157,23 @@ export default function CustomRSSTab() {
     </Modal>
   );
 
-  if (loading && articles.length === 0) {
-    return null;
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   if (feeds.length === 0) {
     return (
-      <EmptyState
-        icon="rss"
-        title="No RSS Feeds"
-        description="Add custom RSS feeds in settings to see news here"
-        buttonText="Go to Settings"
-        onPress={() => {}}
-      />
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No RSS feeds added yet</Text>
+        <Button
+          title="Go to RSS Manager to add feeds"
+          onPress={handleGoToSettings}
+        />
+      </View>
     );
   }
 
@@ -246,5 +283,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Rubik-Regular",
     color: "#666",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: "Rubik-Medium",
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
 });
